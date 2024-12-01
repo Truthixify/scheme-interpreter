@@ -1,6 +1,6 @@
-use scheme::*;
-use miette::{IntoDiagnostic, WrapErr};
 use clap::{Parser, Subcommand};
+use miette::{IntoDiagnostic, WrapErr};
+use scheme::*;
 use std::fs;
 use std::path::PathBuf;
 
