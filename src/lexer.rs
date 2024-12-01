@@ -179,7 +179,7 @@ impl<'a> Iterator for Lexer<'a> {
                 }
                 Started::Number => {
                     let end = c_onwards
-                        .find(|c| matches!(c, ' ' | ')'))
+                        .find(|c: char| c.is_whitespace() || matches!(c, ')'))
                         .unwrap_or_else(|| c_onwards.len());
                     let literal = &c_onwards[..end];
                     let extra_byte = literal.len() - c.len_utf8();
