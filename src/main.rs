@@ -14,7 +14,7 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Commands {
     Tokenize { filename: PathBuf },
-    // Parse { filename: PathBuf },
+    Parse { filename: PathBuf },
     // Run { filename: PathBuf },
 }
 
@@ -29,6 +29,19 @@ fn main() -> miette::Result<()> {
 
             for token in Lexer::new(&file_contents) {
                 println!("{:?}", token);
+            }
+        }
+        Commands::Parse { filename } => {
+            let file_contents = fs::read_to_string(&filename)
+                .into_diagnostic()
+                .wrap_err_with(|| format!("reading '{}' failed", filename.display()))?;
+
+            let mut parser = parser::Parser::new(&file_contents);
+            match parser.parse() {
+                Ok(tt) => println!("{tt}"),
+                Err(e) => {
+                    eprintln!("{e:?}");
+                }
             }
         }
     }

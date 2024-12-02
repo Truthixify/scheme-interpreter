@@ -54,6 +54,7 @@ pub struct Lexer<'a> {
     source: &'a str,
     rest: &'a str,
     byte: usize,
+    pub peeked: Option<Result<Token<'a>, miette::Error>>,
 }
 
 impl<'a> Lexer<'a> {
@@ -62,7 +63,17 @@ impl<'a> Lexer<'a> {
             source: input,
             rest: input,
             byte: 0,
+            peeked: None,
         }
+    }
+
+    pub fn peek(&mut self) -> Option<&Result<Token<'a>, miette::Error>> {
+        if self.peeked.is_some() {
+            return self.peeked.as_ref();
+        }
+
+        self.peeked = self.next();
+        self.peeked.as_ref()
     }
 }
 
@@ -70,6 +81,10 @@ impl<'a> Iterator for Lexer<'a> {
     type Item = Result<Token<'a>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if let Some(next) = self.peeked.take() {
+            return Some(next);
+        }
+        
         loop {
             let mut chars = self.rest.chars();
             let c = chars.next()?;
@@ -113,7 +128,7 @@ impl<'a> Iterator for Lexer<'a> {
                 '<' => Started::IfEqualElse(TokenKind::LessEqual, TokenKind::Less),
                 '>' => Started::IfEqualElse(TokenKind::GreaterEqual, TokenKind::Greater),
                 '"' => Started::String,
-                '0'..'9' => Started::Number,
+                '0'..='9' => Started::Number,
                 'a'..='z' | 'A'..='Z' | '_' => Started::Ident,
                 c if c.is_whitespace() => continue,
                 _ => return Some(Err(miette::miette! {
