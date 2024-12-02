@@ -84,7 +84,7 @@ impl<'a> Iterator for Lexer<'a> {
         if let Some(next) = self.peeked.take() {
             return Some(next);
         }
-        
+
         loop {
             let mut chars = self.rest.chars();
             let c = chars.next()?;
