@@ -28,6 +28,7 @@ pub enum TokenKind {
     Minus,
     Star,
     Slash,
+    Expt,
     Semicolon,
     Not,
     Equal,
@@ -47,6 +48,9 @@ pub enum TokenKind {
     Display,
     Nil,
     Quote,
+    Print,
+    Define,
+    Lambda,
 }
 
 #[derive(Debug)]
@@ -160,6 +164,12 @@ impl<'a> Iterator for Lexer<'a> {
                         "or" => TokenKind::Or,
                         "true" => TokenKind::True,
                         "false" => TokenKind::False,
+                        "expt" => TokenKind::Expt,
+                        "cond" => TokenKind::Cond,
+                        "display" => TokenKind::Display,
+                        "print" => TokenKind::Print,
+                        "define" => TokenKind::Define,
+                        "lambda" => TokenKind::Lambda,
                         _ => TokenKind::Ident,
                     };
 
@@ -387,7 +397,7 @@ mod tests {
             Token {
                 slice: "define",
                 offset: 0,
-                kind: TokenKind::Ident,
+                kind: TokenKind::Define,
             },
             Token {
                 slice: "x",

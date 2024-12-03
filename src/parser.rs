@@ -14,13 +14,22 @@ pub enum Op {
     Minus,
     Plus,
     Star,
-    Not,
+    Slash,
+    Expt,
     Equal,
     LessEqual,
     GreaterEqual,
     Less,
     Greater,
-    Slash,
+    Not,
+    And,
+    Or,
+    If,
+    Cond,
+    Display,
+    Print,
+    Define,
+    Lambda,
 }
 
 impl std::fmt::Display for Op {
@@ -39,6 +48,15 @@ impl std::fmt::Display for Op {
                 Op::Greater => ">",
                 Op::Slash => "/",
                 Op::Not => "not",
+                Op::And => "and",
+                Op::Or => "or",
+                Op::Display => "display",
+                Op::Print => "print",
+                Op::Define => "define",
+                Op::Lambda => "lambda",
+                Op::If => "if",
+                Op::Cond => "cond",
+                Op::Expt => "expt",
             }
         )
     }
@@ -71,6 +89,34 @@ impl std::fmt::Display for Atom<'_> {
 pub enum Pair<'a> {
     Atom(Atom<'a>),
     Cons(Box<Pair<'a>>, Box<Pair<'a>>),
+}
+
+impl<'a> Pair<'a> {
+    pub fn car(&self) -> Pair<'a> {
+        match self {
+            Pair::Atom(atom) => Pair::Atom(atom.clone()),
+            Pair::Cons(p1, _p2) => *p1.clone(),
+        }
+    }
+
+    pub fn cdr(&self) -> Option<Pair<'a>> {
+        match self {
+            Pair::Atom(_) => None,
+            Pair::Cons(_p1, p2) => Some(*p2.clone())
+        }
+    }
+
+    pub fn is_nil(&self) -> bool {
+        matches!(self, Pair::Atom(Atom::Nil))
+    }
+
+    pub fn from_vec(numbers: Vec<f64>) -> Pair<'a> {
+        let mut pair = Pair::Atom(Atom::Nil);
+        for &num in numbers.iter().rev() {
+            pair = Pair::Cons(Box::new(Pair::Atom(Atom::Number(num))), Box::new(pair));
+        }
+        pair
+    }
 }
 
 impl std::fmt::Debug for Pair<'_> {
@@ -158,10 +204,82 @@ impl<'a> Parser<'a> {
                 kind: TokenKind::False,
                 ..
             })) => Ok(Pair::Atom(Atom::Bool(false))),
+
+            // operators
+            Some(Ok(Token {
+                kind: TokenKind::Not,
+                ..
+            })) => Ok(Pair::Atom(Atom::Op(Op::Not))),
             Some(Ok(Token {
                 kind: TokenKind::Plus,
                 ..
             })) => Ok(Pair::Atom(Atom::Op(Op::Plus))),
+            Some(Ok(Token {
+                kind: TokenKind::Minus,
+                ..
+            })) => Ok(Pair::Atom(Atom::Op(Op::Minus))),
+            Some(Ok(Token {
+                kind: TokenKind::Star,
+                ..
+            })) => Ok(Pair::Atom(Atom::Op(Op::Star))),
+            Some(Ok(Token {
+                kind: TokenKind::Slash,
+                ..
+            })) => Ok(Pair::Atom(Atom::Op(Op::Slash))),
+            Some(Ok(Token {
+                kind: TokenKind::Expt,
+                ..
+            })) => Ok(Pair::Atom(Atom::Op(Op::Expt))),
+            Some(Ok(Token {
+                kind: TokenKind::Less,
+                ..
+            })) => Ok(Pair::Atom(Atom::Op(Op::Less))),
+            Some(Ok(Token {
+                kind: TokenKind::LessEqual,
+                ..
+            })) => Ok(Pair::Atom(Atom::Op(Op::LessEqual))),
+            Some(Ok(Token {
+                kind: TokenKind::Greater,
+                ..
+            })) => Ok(Pair::Atom(Atom::Op(Op::Greater))),
+            Some(Ok(Token {
+                kind: TokenKind::GreaterEqual,
+                ..
+            })) => Ok(Pair::Atom(Atom::Op(Op::GreaterEqual))),
+            Some(Ok(Token {
+                kind: TokenKind::Display,
+                ..
+            })) => Ok(Pair::Atom(Atom::Op(Op::Display))),
+            Some(Ok(Token {
+                kind: TokenKind::Define,
+                ..
+            })) => Ok(Pair::Atom(Atom::Op(Op::Define))),
+            Some(Ok(Token {
+                kind: TokenKind::Lambda,
+                ..
+            })) => Ok(Pair::Atom(Atom::Op(Op::Lambda))),
+            Some(Ok(Token {
+                kind: TokenKind::Print,
+                ..
+            })) => Ok(Pair::Atom(Atom::Op(Op::Print))),
+            Some(Ok(Token {
+                kind: TokenKind::If,
+                ..
+            })) => Ok(Pair::Atom(Atom::Op(Op::If))),
+            Some(Ok(Token {
+                kind: TokenKind::Cond,
+                ..
+            })) => Ok(Pair::Atom(Atom::Op(Op::Cond))),
+            Some(Ok(Token {
+                kind: TokenKind::And,
+                ..
+            })) => Ok(Pair::Atom(Atom::Op(Op::And))),
+            Some(Ok(Token {
+                kind: TokenKind::Or,
+                ..
+            })) => Ok(Pair::Atom(Atom::Op(Op::Or))),
+
+            // parenthesis
             Some(Ok(Token {
                 kind: TokenKind::LeftParen,
                 ..
@@ -178,7 +296,7 @@ impl<'a> Parser<'a> {
                     labels = vec![
                         LabeledSpan::at(token.offset..token.offset + token.slice.len(), "here"),
                     ],
-                    help = format!("unexpected {:?}", token.kind),
+                    help = format!("unexpected {:?}", token.slice),
                     "unexpected token",
                 }
                 .with_source_code(self.source.to_string()))
