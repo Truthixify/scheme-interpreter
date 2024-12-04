@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use miette::{IntoDiagnostic, WrapErr};
-use scheme::*;
+use scheme_rust::*;
 use std::{fs, io::{self, Write}};
 use std::path::PathBuf;
 
@@ -16,6 +16,7 @@ enum Commands {
     Tokenize { filename: PathBuf },
     Parse { filename: PathBuf },
     Calc,
+    Eval,
     // Run { filename: PathBuf },
 }
 
@@ -62,6 +63,34 @@ fn main() -> miette::Result<()> {
                 match parser.parse() {
                     Ok(tt) => {
                         match calc_eval(tt) {
+                            Ok(res) => println!("{res}"),
+                            Err(err) => eprintln!("{err}"),
+                        }
+                    }
+                    Err(e) => eprintln!("{e:?}"),
+                }
+            }
+        }
+        Commands::Eval => {
+            loop {
+                let eval = evaluator::Evaluator::new();
+                let mut input = String::new();
+                print!("eval> ");
+                io::stdout().flush().unwrap();
+
+                io::stdin().read_line(&mut input).expect("unexpected input");
+                let input = input.trim();
+                if input.is_empty() {
+                    continue;
+                }
+                if input.eq_ignore_ascii_case("exit") {
+                    break;
+                }
+
+                let mut parser = parser::Parser::new(input);
+                match parser.parse() {
+                    Ok(tt) => {
+                        match eval.eval(tt) {
                             Ok(res) => println!("{res}"),
                             Err(err) => eprintln!("{err}"),
                         }

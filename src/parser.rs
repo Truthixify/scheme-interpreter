@@ -30,6 +30,8 @@ pub enum Op {
     Print,
     Define,
     Lambda,
+    Let,
+    Begin,
 }
 
 impl std::fmt::Display for Op {
@@ -57,6 +59,8 @@ impl std::fmt::Display for Op {
                 Op::If => "if",
                 Op::Cond => "cond",
                 Op::Expt => "expt",
+                Op::Let => "let",
+                Op::Begin => "begin"
             }
         )
     }
@@ -68,7 +72,7 @@ pub enum Atom<'a> {
     Number(f64),
     Nil,
     Bool(bool),
-    Ident(&'a str),
+    Symbol(&'a str),
     Op(Op),
 }
 
@@ -76,7 +80,7 @@ impl std::fmt::Display for Atom<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Atom::Bool(b) => write!(f, "{}", if *b { "#t" } else { "#f" }),
-            Atom::Ident(id) => write!(f, "{}", id),
+            Atom::Symbol(sym) => write!(f, "{}", sym),
             Atom::Number(n) => write!(f, "{}", n),
             Atom::String(s) => write!(f, "{}", s),
             Atom::Nil => write!(f, "()"),
@@ -116,6 +120,56 @@ impl<'a> Pair<'a> {
             pair = Pair::Cons(Box::new(Pair::Atom(Atom::Number(num))), Box::new(pair));
         }
         pair
+    }
+
+    pub fn to_vec(&self) -> Vec<Pair<'a>> {
+        let mut result = vec![];
+        let mut current = self;
+        loop {
+            match current {
+                Pair::Cons(car, cdr) => {
+                    result.push(*car.clone());
+                    current = cdr;
+                }
+                Pair::Atom(Atom::Nil) => break,
+                _ => {
+                    result.push(current.clone());
+                    break;
+                }
+            }
+        }
+        result
+    }
+
+    pub fn is_truthy(&self) -> bool {
+        match self {
+            Pair::Atom(Atom::Bool(b)) => *b,
+            Pair::Atom(Atom::Nil) => false,
+            _ => true,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        let length = 0;
+        
+        if !self.is_nil() {
+            if let Some(cdr) = self.cdr() {
+                return 1 + cdr.len();
+            }
+        }
+
+        length
+    }
+
+    pub fn map<F>(self, f: F) -> Pair<'a> 
+    where 
+        F: Fn(Pair) -> Pair,
+    {
+        if let Some(cdr) = self.cdr() {
+            return Pair::Cons(Box::new(f(self.car())), Box::new(cdr.map(f)));
+        } else {
+            todo!()
+        }
     }
 }
 
@@ -192,10 +246,10 @@ impl<'a> Parser<'a> {
                 ..
             })) => Ok(Pair::Atom(Atom::Number(slice.parse().unwrap()))),
             Some(Ok(Token {
-                kind: TokenKind::Ident,
+                kind: TokenKind::Symbol,
                 slice,
                 ..
-            })) => Ok(Pair::Atom(Atom::Ident(slice))),
+            })) => Ok(Pair::Atom(Atom::Symbol(slice))),
             Some(Ok(Token {
                 kind: TokenKind::True,
                 ..
@@ -288,7 +342,7 @@ impl<'a> Parser<'a> {
                 kind: TokenKind::Quote,
                 ..
             })) => Ok(Pair::Cons(
-                Box::new(Pair::Atom(Atom::Ident("quote"))),
+                Box::new(Pair::Atom(Atom::Symbol("quote"))),
                 Box::new(self.parse_head()?),
             )),
             Some(Ok(token)) => {
@@ -330,7 +384,7 @@ impl<'a> Parser<'a> {
                         slice,
                         ..
                     })) => Ok(Pair::Atom(Atom::Number(slice.parse().unwrap()))),
-                    Some(Ok(token)) => Ok(Pair::Atom(Atom::Ident(token.slice))),
+                    Some(Ok(token)) => Ok(Pair::Atom(Atom::Symbol(token.slice))),
                     Some(Err(err)) => return Err(err),
                     None => return Err(Eof.into()),
                 }
@@ -396,7 +450,7 @@ mod tests {
     fn test_parse_identifier() {
         let input = "foo";
         let result = parse_input(input).unwrap();
-        assert_eq!(result, Pair::Atom(Atom::Ident("foo")));
+        assert_eq!(result, Pair::Atom(Atom::Symbol("foo")));
     }
 
     #[test]
@@ -465,8 +519,8 @@ mod tests {
         let input = "'foo";
         let result = parse_input(input).unwrap();
         let expected = Pair::Cons(
-            Box::new(Pair::Atom(Atom::Ident("quote"))),
-            Box::new(Pair::Atom(Atom::Ident("foo"))),
+            Box::new(Pair::Atom(Atom::Symbol("quote"))),
+            Box::new(Pair::Atom(Atom::Symbol("foo"))),
         );
         assert_eq!(result, expected);
     }

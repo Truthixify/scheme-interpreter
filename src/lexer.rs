@@ -37,7 +37,7 @@ pub enum TokenKind {
     Less,
     Greater,
     String,
-    Ident,
+    Symbol,
     Number,
     And,
     Or,
@@ -51,6 +51,8 @@ pub enum TokenKind {
     Print,
     Define,
     Lambda,
+    Let,
+    Begin,
 }
 
 #[derive(Debug)]
@@ -101,7 +103,7 @@ impl<'a> Iterator for Lexer<'a> {
             enum Started {
                 String,
                 IfNextIsNumberElse(TokenKind, TokenKind),
-                Ident,
+                Symbol,
                 Number,
                 IfEqualElse(TokenKind, TokenKind),
                 Semicolon,
@@ -133,7 +135,7 @@ impl<'a> Iterator for Lexer<'a> {
                 '>' => Started::IfEqualElse(TokenKind::GreaterEqual, TokenKind::Greater),
                 '"' => Started::String,
                 '0'..='9' => Started::Number,
-                'a'..='z' | 'A'..='Z' | '_' => Started::Ident,
+                'a'..='z' | 'A'..='Z' | '_' => Started::Symbol,
                 c if c.is_whitespace() => continue,
                 _ => return Some(Err(miette::miette! {
                     labels = vec![
@@ -145,7 +147,7 @@ impl<'a> Iterator for Lexer<'a> {
             };
 
             match started {
-                Started::Ident => {
+                Started::Symbol => {
                     let first_non_ident = c_onwards
                         .find(|c| !matches!(c, 'a'..='z' | 'A'..='Z' | '_' | '0'..='9' | '?'))
                         .unwrap_or_else(|| c_onwards.len());
@@ -170,7 +172,9 @@ impl<'a> Iterator for Lexer<'a> {
                         "print" => TokenKind::Print,
                         "define" => TokenKind::Define,
                         "lambda" => TokenKind::Lambda,
-                        _ => TokenKind::Ident,
+                        "let" => TokenKind::Let,
+                        "begin" => TokenKind::Begin,
+                        _ => TokenKind::Symbol,
                     };
 
                     return Some(Ok(Token {
@@ -402,7 +406,7 @@ mod tests {
             Token {
                 slice: "x",
                 offset: 7,
-                kind: TokenKind::Ident,
+                kind: TokenKind::Symbol,
             },
             Token {
                 slice: "and",
